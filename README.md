@@ -1,0 +1,2 @@
+A simple app and lib that collects some statistical informations about the board game "Can't Stop" through simulation.
+This version prints out how often you may retry configurations of three lanes (expected value and standard deviation).
