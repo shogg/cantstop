@@ -28,10 +28,17 @@ type Stats struct {
 	meanPrev, mean float64
 	sPrev, s       float64
 
+	histogram [20]int
+
 	// Use separate rands in a multi-threaded app.
 	// Avoid rand.Intn etc. these delegate to a global thread-safe (aka blocking) rand.
 	rand *rand.Rand
 }
+
+const (
+	// HistHeight height of a histogram diagram
+	HistHeight = 40
+)
 
 var (
 	// Configs 21+
@@ -127,12 +134,20 @@ func (cnf *Config) Matches(d1, d2, d3, d4 int) bool {
 
 // Val adds a new value of successful tries.
 func (st *Stats) Val(v int) {
+
+	// Histogram of counts per tries
+	if v < len(st.histogram) {
+		st.histogram[v]++
+	}
+
+	// Expected value
 	st.e += int64(v)
 	d := float64(v)
 
+	// Standard deviation
 	st.n++
 	if st.n == 1 {
-		st.mean = float64(d)
+		st.mean = d
 		st.s = 0
 	} else {
 		st.meanPrev = st.mean
@@ -166,5 +181,35 @@ func (sim *Sim) String() string {
 		buf.WriteString("\n")
 	}
 
+	buf.WriteString("\n")
+
+	for _, st := range sim.Stats {
+		buf.WriteString(fmt.Sprintf("%v\n", st.Config))
+
+		scale := maxHist(sim) / HistHeight
+		for i, h := range st.histogram {
+			buf.WriteString(fmt.Sprintf("%2d ", i))
+			buf.WriteString(strings.Repeat("■", h/scale))
+			buf.WriteString("\n")
+			if h/scale == 0 {
+				break
+			}
+		}
+	}
+
 	return buf.String()
+}
+
+func maxHist(sim *Sim) int {
+
+	max := 0
+	for _, st := range sim.Stats {
+		for _, h := range st.histogram {
+			if h > max {
+				max = h
+			}
+		}
+	}
+
+	return max
 }
