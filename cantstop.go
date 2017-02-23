@@ -11,11 +11,8 @@ import (
 // Sim collects statistics of a simulation of how often you may retry a configuration of three lanes.
 type Sim struct {
 	N     int // repetitions
-	Stats [23]*Stats
+	Stats []*Stats
 }
-
-// Config is the selection of three lanes in a game of "can't stop".
-type Config [3]int
 
 // Stats collects statistics of a simulation of how often you may retry a configuration of three lanes.
 type Stats struct {
@@ -35,15 +32,19 @@ type Stats struct {
 	rand *rand.Rand
 }
 
+// Config is the selection of three lanes in a game of "can't stop".
+type Config []int
+
 const (
 	// HistHeight height of a histogram diagram
-	HistHeight = 40
+	HistHeight = 80
 )
 
 var (
 	// Configs 21+
 	// 234 235 236 237 245 246 247 256 257 267 345 346 347 356 357 367 456 457 467 567
-	Configs = [23]Config{
+	Configs = []Config{
+		{2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12},
 		{2, 3, 4}, {2, 3, 5}, {2, 3, 6}, {2, 3, 7}, {2, 4, 5}, {2, 4, 6}, {2, 4, 7}, {2, 5, 6}, {2, 5, 7}, {2, 6, 7},
 		{3, 4, 5}, {3, 4, 6}, {3, 4, 7}, {3, 5, 6}, {3, 5, 7}, {3, 6, 7},
 		{4, 5, 6}, {4, 5, 7}, {4, 6, 7},
@@ -60,6 +61,7 @@ func NewSim(N int) *Sim {
 	sim := new(Sim)
 	sim.N = N
 
+	sim.Stats = make([]*Stats, len(Configs))
 	for i, cnf := range Configs {
 		sim.Stats[i] = &Stats{Config: cnf, rand: rand.New(rand.NewSource(12))}
 	}
@@ -108,7 +110,7 @@ func (st *Stats) Roll() (d1, d2, d3, d4 int) {
 }
 
 // Matches if a sum of two out of four dice hits a current lane.
-func (cnf *Config) Matches(d1, d2, d3, d4 int) bool {
+func (cnf Config) Matches(d1, d2, d3, d4 int) bool {
 	for _, c := range cnf {
 		if d1+d2 == c {
 			return true
@@ -174,24 +176,24 @@ func (sim *Sim) String() string {
 	buf.WriteString(fmt.Sprint("Lanes      E   Sd       E (Bar)\n"))
 	buf.WriteString(fmt.Sprint("----------------------------------------------------------\n"))
 	for _, st := range sim.Stats {
-		buf.WriteString(fmt.Sprintf("%v", st.Config))
+		buf.WriteString(fmt.Sprintf("%2v", st.Config))
 		buf.WriteString(fmt.Sprintf(" %4.1f", st.E()))
 		buf.WriteString(fmt.Sprintf(" %4.1f  \t", st.Sd()))
-		buf.WriteString(strings.Repeat("■", int(st.E()*3)))
+		buf.WriteString(strings.Repeat("■", int(st.E()*5)))
 		buf.WriteString("\n")
 	}
 
 	buf.WriteString("\n")
 
+	scale := maxHist(sim) / HistHeight
 	for _, st := range sim.Stats {
 		buf.WriteString(fmt.Sprintf("%v\n", st.Config))
 
-		scale := maxHist(sim) / HistHeight
 		for i, h := range st.histogram {
 			buf.WriteString(fmt.Sprintf("%2d ", i))
 			buf.WriteString(strings.Repeat("■", h/scale))
-			buf.WriteString("\n")
-			if h/scale == 0 {
+			buf.WriteString(fmt.Sprintf(" %d\n", h/scale))
+			if h/scale == 0 && i != 0 {
 				break
 			}
 		}
